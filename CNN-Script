@@ -1,0 +1,63 @@
+import pandas as pd
+import numpy as np
+import numpy as np
+np.random.seed(1337) # for reproducibility
+from keras.layers import Dense, Conv2D, MaxPool2D, AvgPool2D,Flatten, Input, Activation, Dropout, BatchNormalization
+from keras.models import Sequential
+from keras import Model
+from keras import initializers
+from keras import optimizers
+import matplotlib.pyplot as plt
+
+train = pd.read_csv("data/train.csv")
+test = pd.read_csv("data/test.csv")
+
+y_train = train['label'].values
+
+train = train.ix[: ,train.columns != 'label'].values
+test = test.values
+
+train = train/255
+test = test/255
+
+train = train.reshape(-1,28,28,1)
+test = test.reshape(-1,28,28,1)
+
+
+target = pd.get_dummies(y_train).values
+print(target.shape)
+
+model = Sequential()
+model.add(Conv2D(input_shape=(28,28,1),filters=10,kernel_size=(5,5),padding='same', kernel_initializer=initializers.TruncatedNormal(mean=0.0, stddev=0.05, seed=17)))
+model.add(MaxPool2D(pool_size=(3,3), strides=(2,2)))
+model.add(BatchNormalization())
+model.add(Activation('relu'))
+model.add(Conv2D(filters=16,kernel_size=(3,3),padding='same', kernel_initializer=initializers.TruncatedNormal(mean=0.0, stddev=0.05, seed=17)))
+model.add(MaxPool2D(pool_size=(3,3), strides=(1,1)))
+model.add(Activation('relu'))
+model.add(Flatten(input_shape=(26,26,6)))
+model.add(Dense(128, activation='relu'))
+model.add(Dropout(0.5))
+model.add(Dense(64, activation='relu'))
+model.add(Dropout(0.4))
+model.add(Dense(10, activation='softmax'))
+
+model.compile(loss='categorical_crossentropy', optimizer=optimizers.nadam(lr=0.00005), metrics=['categorical_accuracy'])
+
+print(model.summary())
+
+
+
+history = model.fit(x=train, y=target,batch_size=128, epochs=200, validation_split=0.1, verbose=2, shuffle=True)
+
+y_pred = model.predict(test, batch_size=128)
+
+np.save("mnist_pred.csv", y_pred)
+
+print(history.history.keys())
+loss = history.history['loss']
+val_loss = history.history['val_loss']
+plt.plot(loss)
+plt.plot(val_loss)
+plt.legend(['loss', 'val_loss'])
+plt.show()
